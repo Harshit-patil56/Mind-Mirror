@@ -36,6 +36,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Ensure public directory exists even if git didn't track empty folders
+RUN mkdir -p /app/public
+
 # Compile Next.js 15 app (generates .next/standalone and .next/static)
 RUN npm run build
 
