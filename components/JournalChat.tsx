@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowRight, ArrowUp, ArrowDown, Square, Sparkles, Copy, Check, Plus, AlertTriangle, PanelLeft } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { ArrowRight, ArrowUp, ArrowDown, Square, Sparkles, Copy, Check, Plus, AlertTriangle, PanelLeft, RefreshCw, RotateCcw, X } from 'lucide-react';
 import { DuoIcon } from '@/components/DuoIcon';
 import ReactMarkdown from 'react-markdown';
 import type { ConversationMessage, JournalEntry, ConversationSession } from '@/lib/types';
@@ -10,6 +10,8 @@ import { generateId } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { VoiceDictationButton } from '@/components/VoiceDictationButton';
 import { NewChatModal } from '@/components/NewChatModal';
+import { type ReframeData, type ReframeOption } from '@/components/ReframeModal';
+import { getCircadianConfig, getAlternatePrompts, type CircadianPhase } from '@/lib/circadian';
 
 interface JournalChatProps {
   userId: string;
@@ -41,6 +43,65 @@ const COGNITIVE_CUES = [
   'Synthesizing gentle inquiry...',
 ];
 
+// Prompt Chip with smooth marquee effect and locked comfortable height (zero vertical expansion or visual flutter)
+const PromptChip: React.FC<{
+  prompt: string;
+  onClick: (prompt: string) => void;
+}> = ({ prompt, onClick }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [overflowDistance, setOverflowDistance] = useState(0);
+
+  const measureOverflow = () => {
+    if (containerRef.current && textRef.current) {
+      const diff = textRef.current.scrollWidth - containerRef.current.clientWidth;
+      setOverflowDistance(diff > 0 ? diff : 0);
+    }
+  };
+
+  useEffect(() => {
+    measureOverflow();
+  }, [prompt]);
+
+  const shouldMarquee = isHovered && overflowDistance > 0;
+  const marqueeDuration = Math.min(6, Math.max(1.5, overflowDistance / 35));
+
+  return (
+    <button
+      type="button"
+      onMouseEnter={() => {
+        setIsHovered(true);
+        measureOverflow();
+      }}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onClick(prompt)}
+      className="w-full text-left px-3.5 h-11 rounded-xl text-xs text-[#1D1D1F] dark:text-[#F5F5F7] bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] hover:border-[#007AFF] dark:hover:border-[#0A84FF] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] transition-colors flex items-center justify-between group shadow-2xs cursor-pointer overflow-hidden select-none"
+    >
+      <div ref={containerRef} className="flex-1 min-w-0 mr-2 overflow-hidden whitespace-nowrap relative flex items-center h-full">
+        <span
+          ref={textRef}
+          className="inline-block whitespace-nowrap"
+          style={
+            shouldMarquee
+              ? {
+                  transform: `translateX(-${overflowDistance + 6}px)`,
+                  transition: `transform ${marqueeDuration}s ease-in-out`,
+                }
+              : {
+                  transform: 'translateX(0)',
+                  transition: 'transform 0.25s ease-out',
+                }
+          }
+        >
+          {prompt}
+        </span>
+      </div>
+      <ArrowRight className="w-3.5 h-3.5 text-[#86868B] dark:text-[#636366] group-hover:text-[#007AFF] dark:group-hover:text-[#0A84FF] transition-colors shrink-0 ml-2" />
+    </button>
+  );
+};
+
 export const JournalChat: React.FC<JournalChatProps> = ({
   userId,
   onEntrySaved,
@@ -50,6 +111,60 @@ export const JournalChat: React.FC<JournalChatProps> = ({
   onToggleSidebar,
   onSessionUpdated,
 }) => {
+  const [circadianOverride, setCircadianOverride] = useState<CircadianPhase | null>(null);
+  const circadianConfig = useMemo(() => getCircadianConfig(circadianOverride || undefined), [circadianOverride]);
+
+  // AI-generated / alternate prompt cache per circadian phase
+  const [customPrompts, setCustomPrompts] = useState<Partial<Record<CircadianPhase, string[]>>>({});
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
+
+  const activePrompts = useMemo(() => {
+    return customPrompts[circadianConfig.phase] || circadianConfig.prompts;
+  }, [customPrompts, circadianConfig.phase, circadianConfig.prompts]);
+
+  const handleRefreshPrompts = async () => {
+    if (isGeneratingPrompts) return;
+    setIsGeneratingPrompts(true);
+
+    const phase = circadianConfig.phase;
+    const current = activePrompts;
+
+    try {
+      const res = await fetch('/api/gemini/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phase, currentPrompts: current }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.prompts) && data.prompts.length > 0) {
+          setCustomPrompts((prev) => ({
+            ...prev,
+            [phase]: data.prompts,
+          }));
+          return;
+        }
+      }
+
+      // Offline alternate pool fallback
+      const alternate = getAlternatePrompts(phase, current);
+      setCustomPrompts((prev) => ({
+        ...prev,
+        [phase]: alternate,
+      }));
+    } catch (error) {
+      console.error('Error generating fresh prompts:', error);
+      const alternate = getAlternatePrompts(phase, current);
+      setCustomPrompts((prev) => ({
+        ...prev,
+        [phase]: alternate,
+      }));
+    } finally {
+      setIsGeneratingPrompts(false);
+    }
+  };
+
   const [messages, setMessages] = useState<ConversationMessage[]>(() => {
     if (initialSession?.messages && initialSession.messages.length > 0) {
       return initialSession.messages;
@@ -102,6 +217,71 @@ export const JournalChat: React.FC<JournalChatProps> = ({
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(false);
   const [activeModel, setActiveModel] = useState<string>('gemini-3.1-flash-lite');
+
+  // Live Cognitive Reframe State (CBT Restructuring directly inside input composer)
+  const [showLiveReframeCard, setShowLiveReframeCard] = useState(false);
+  const [isReframingLive, setIsReframingLive] = useState(false);
+  const [liveReframeData, setLiveReframeData] = useState<ReframeData | null>(null);
+  const [previousDraftBeforeReframe, setPreviousDraftBeforeReframe] = useState<string | null>(null);
+
+  const handleLiveReframe = async () => {
+    const textToReframe = inputPrompt.trim();
+    if (!textToReframe || isReframingLive) return;
+
+    setIsReframingLive(true);
+    setShowLiveReframeCard(true);
+    setLiveReframeData(null);
+
+    try {
+      const res = await fetch('/api/gemini/reframe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: textToReframe }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to reframe thought');
+      }
+
+      const data = await res.json();
+      setLiveReframeData(data);
+    } catch (err: unknown) {
+      console.error('Live reframe error:', err);
+    } finally {
+      setIsReframingLive(false);
+    }
+  };
+
+  const handleApplyReframe = (option: ReframeOption) => {
+    setPreviousDraftBeforeReframe(inputPrompt);
+    setInputPrompt(option.perspective);
+    setShowLiveReframeCard(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+        }
+      }, 50);
+    }
+  };
+
+  const handleUndoReframe = () => {
+    if (previousDraftBeforeReframe !== null) {
+      setInputPrompt(previousDraftBeforeReframe);
+      setPreviousDraftBeforeReframe(null);
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+          }
+        }, 50);
+      }
+    }
+  };
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -370,6 +550,8 @@ export const JournalChat: React.FC<JournalChatProps> = ({
     setMessages(updatedMessages);
     setIsSaved(false);
     setInputPrompt('');
+    setPreviousDraftBeforeReframe(null);
+    setShowLiveReframeCard(false);
 
     await generateAssistantReply(updatedMessages);
   };
@@ -464,6 +646,8 @@ export const JournalChat: React.FC<JournalChatProps> = ({
     setSessionTitle(newTitle);
     setIsSaved(false);
     setInputPrompt('');
+    setPreviousDraftBeforeReframe(null);
+    setShowLiveReframeCard(false);
     setErrorMessage(null);
     setShowNewChatModal(false);
     if (typeof window !== 'undefined') {
@@ -624,21 +808,63 @@ export const JournalChat: React.FC<JournalChatProps> = ({
               Write freely. This space is private, non-judgmental, and isolated. Explore thoughts, express friction, or brainstorm goals.
             </p>
 
-            {/* Prompt Starter Chips */}
-            <div id="tip-starters" className="w-full space-y-2">
-              <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] block mb-1">
-                Reflective starting points
-              </span>
-              {PROMPT_SUGGESTIONS.map((prompt, idx) => (
+            {/* Clean Segmented Phase Toggle & Calibrated Prompt Starters */}
+            <div id="tip-starters" className="w-full space-y-3">
+              {/* Centered Segmented Control */}
+              <div className="flex items-center justify-center pb-1">
+                <div className="inline-flex items-center p-1 bg-black/5 dark:bg-white/10 rounded-xl border border-black/5 dark:border-white/5 shadow-2xs relative select-none">
+                  {(['morning', 'midday', 'evening', 'night'] as CircadianPhase[]).map((phaseKey) => (
+                    <button
+                      key={phaseKey}
+                      type="button"
+                      onClick={() => setCircadianOverride(phaseKey)}
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors cursor-pointer ${
+                        circadianConfig.phase === phaseKey
+                          ? 'text-[#1D1D1F] dark:text-white font-semibold'
+                          : 'text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white'
+                      }`}
+                    >
+                      {circadianConfig.phase === phaseKey && (
+                        <motion.div
+                          layoutId="circadian-phase-pill"
+                          className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs"
+                          transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                        />
+                      )}
+                      <span className="relative z-10">{phaseKey}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Research-Calibrated Prompt Chips with Marquee Effect */}
+              <div className="space-y-2">
+                {activePrompts.map((prompt, idx) => (
+                  <PromptChip
+                    key={`${circadianConfig.phase}-${idx}-${prompt.slice(0, 15)}`}
+                    prompt={prompt}
+                    onClick={handleSendMessage}
+                  />
+                ))}
+              </div>
+
+              {/* Bottom AI Think 4 Options Button (Static Icon, No Movement) */}
+              <div className="pt-1 flex items-center justify-center">
                 <button
-                  key={idx}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="w-full text-left p-3 rounded-xl text-xs text-[#1D1D1F] dark:text-[#F5F5F7] bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] hover:border-[#007AFF] dark:hover:border-[#0A84FF] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] transition-all flex items-center justify-between group shadow-2xs"
+                  type="button"
+                  onClick={handleRefreshPrompts}
+                  disabled={isGeneratingPrompts}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white bg-white dark:bg-[#1C1C1E] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E] border border-[#E5E5EA] dark:border-[#38383A] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                  title="Generate 4 fresh AI-formulated prompts tailored to this circadian time"
                 >
-                  <span className="truncate">{prompt}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#86868B] dark:text-[#636366] group-hover:text-[#007AFF] dark:group-hover:text-[#0A84FF] transition-colors shrink-0 ml-2" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF] shrink-0" />
+                  <span>
+                    {isGeneratingPrompts
+                      ? 'AI thinking 4 new options...'
+                      : 'Think 4 new options with AI'}
+                  </span>
                 </button>
-              ))}
+              </div>
             </div>
           </div>
         ) : (
@@ -646,7 +872,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
             msg.role === 'user' ? (
               /* User Bubble: ChatGPT macOS / iOS Style (borderless graphite pill) */
               <div key={msg.id} className="flex justify-end w-full group animate-in fade-in duration-150">
-                <div className="max-w-[85%] sm:max-w-[72%] rounded-[22px] px-5 py-3 text-[15px] leading-relaxed bg-[#E9E9EB] text-[#0D0D0D] dark:bg-[#2F2F2F] dark:text-[#ECECEC]">
+                <div className="max-w-[85%] sm:max-w-[72%] rounded-[22px] px-5 py-3 text-[15px] leading-relaxed bg-[#E9E9EB] text-[#0D0D0D] dark:bg-[#2F2F2F] dark:text-[#ECECEC] shadow-2xs">
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                 </div>
               </div>
@@ -756,6 +982,104 @@ export const JournalChat: React.FC<JournalChatProps> = ({
             </button>
           )}
 
+          {/* Reframe Undo Toast / Banner */}
+          {previousDraftBeforeReframe !== null && !showLiveReframeCard && (
+            <div className="mb-2.5 px-4 py-2 rounded-2xl bg-[#1C1C1E] dark:bg-[#2C2C2E] text-white border border-white/10 shadow-xl flex items-center justify-between text-xs animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#0A84FF] shrink-0" />
+                <span className="font-medium text-white/90">Grounded reframe applied to your draft</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleUndoReframe}
+                  className="px-2.5 py-1 rounded-xl bg-white/15 hover:bg-white/25 font-semibold text-xs text-white transition-colors cursor-pointer flex items-center space-x-1 shadow-2xs active:scale-95"
+                >
+                  <RotateCcw className="w-3 h-3 shrink-0" />
+                  <span>Undo to original text</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviousDraftBeforeReframe(null)}
+                  className="p-1 text-white/60 hover:text-white transition-colors cursor-pointer"
+                  title="Keep reframe"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Live Cognitive Reframe Drawer (Anchored directly above input) */}
+          {showLiveReframeCard && (
+            <div className="mb-2.5 p-4 rounded-2xl bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-2xl text-left animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <div className="flex items-center justify-between pb-2 border-b border-black/5 dark:border-white/5">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-[#007AFF] dark:bg-[#0A84FF]" />
+                  <span className="text-xs font-semibold text-[#1D1D1F] dark:text-white">
+                    Live Cognitive Restructuring (CBT)
+                  </span>
+                  {liveReframeData?.distortion && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                      {liveReframeData.distortion}
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLiveReframeCard(false)}
+                  className="p-1 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {isReframingLive ? (
+                <div className="py-6 flex flex-col items-center justify-center space-y-2 text-xs text-stone-600 dark:text-stone-300">
+                  <div className="w-5 h-5 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+                  <span>Examining cognitive distortions and formulating grounded perspectives...</span>
+                </div>
+              ) : liveReframeData ? (
+                <div className="pt-2.5 space-y-2.5">
+                  {liveReframeData.distortionExplanation && (
+                    <p className="text-[11px] text-[#86868B] dark:text-[#8E8E93] leading-relaxed">
+                      {liveReframeData.distortionExplanation}
+                    </p>
+                  )}
+
+                  <div className="text-[11px] font-medium text-stone-600 dark:text-stone-300">
+                    Select an alternative perspective to reframe your text live:
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {liveReframeData.reframes.map((refItem, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleApplyReframe(refItem)}
+                        className="p-3 rounded-xl border border-black/10 dark:border-white/10 bg-black/2 dark:bg-white/5 hover:border-[#007AFF] dark:hover:border-[#0A84FF] hover:bg-[#007AFF]/5 dark:hover:bg-[#0A84FF]/10 transition-all text-left group cursor-pointer flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="text-[10px] font-semibold text-[#007AFF] dark:text-[#0A84FF] mb-1">
+                            {refItem.strategy}
+                          </div>
+                          <p className="text-xs text-[#1D1D1F] dark:text-[#F5F5F7] leading-relaxed line-clamp-3">
+                            {refItem.perspective}
+                          </p>
+                        </div>
+                        <div className="pt-2 mt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] font-medium text-[#007AFF] dark:text-[#0A84FF]">
+                          <span>Apply to input</span>
+                          <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
           <form
             id="tip-composer"
             onSubmit={(e) => {
@@ -782,25 +1106,56 @@ export const JournalChat: React.FC<JournalChatProps> = ({
               {/* Left Action Buttons */}
               <div className="flex items-center space-x-2">
 
-                {/* Model Status Pill: Red dot + model name (offline) if offline, Green dot + model name if online */}
-                <div
-                  className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-black/5 dark:bg-white/10 text-stone-700 dark:text-stone-300 border border-black/5 dark:border-white/5 select-none whitespace-nowrap"
-                  title={isOnline ? `Online • ${activeModel}` : `Offline • ${activeModel}`}
-                >
-                  {isOnline ? (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shadow-[0_0_6px_rgba(48,209,88,0.6)] shrink-0" />
-                      <span className="font-mono text-[11px]">{activeModel}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF453A] shadow-[0_0_6px_rgba(255,69,58,0.6)] shrink-0" />
-                      <span className="font-mono text-[11px]">{activeModel} (offline)</span>
-                    </>
+                  {/* Model Status Pill: Red dot + model name (offline) if offline, Green dot + model name if online */}
+                  <div
+                    className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-black/5 dark:bg-white/10 text-stone-700 dark:text-stone-300 border border-black/5 dark:border-white/5 select-none whitespace-nowrap"
+                    title={isOnline ? `Online • ${activeModel}` : `Offline • ${activeModel}`}
+                  >
+                    {isOnline ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#30D158] shadow-[0_0_6px_rgba(48,209,88,0.6)] shrink-0" />
+                        <span className="font-mono text-[11px]">{activeModel}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF453A] shadow-[0_0_6px_rgba(255,69,58,0.6)] shrink-0" />
+                        <span className="font-mono text-[11px]">{activeModel} (offline)</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Live Cognitive Reframe Button with Explanatory Flyout */}
+                  {inputPrompt.trim().length > 0 && (
+                    <div className="relative group/reframe">
+                      <button
+                        type="button"
+                        onClick={handleLiveReframe}
+                        disabled={isReframingLive || isGenerating || isSummarizing}
+                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] hover:text-[#1D1D1F] dark:hover:text-white bg-white dark:bg-[#2C2C2E] hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] border border-[#E5E5EA] dark:border-[#38383A] transition-all cursor-pointer shadow-2xs active:scale-95 select-none"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF] shrink-0" />
+                        <span>{isReframingLive ? 'Reframing...' : 'Reframe'}</span>
+                      </button>
+
+                      {/* Apple HIG Flyout Card */}
+                      <div className="absolute bottom-full left-0 mb-2.5 w-64 p-3.5 rounded-2xl bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl border border-black/10 dark:border-white/15 shadow-xl text-left pointer-events-none opacity-0 translate-y-1 group-hover/reframe:opacity-100 group-hover/reframe:translate-y-0 transition-all duration-200 z-50">
+                        <div className="flex items-center space-x-1.5 mb-1.5 text-xs font-semibold text-[#1D1D1F] dark:text-white">
+                          <Sparkles className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF] shrink-0" />
+                          <span>Cognitive Reframe</span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-[#6E6E73] dark:text-[#8E8E93]">
+                          Analyzes unhelpful patterns (like catastrophizing or harsh self-talk) in your text and formulates 3 balanced, grounded perspectives.
+                        </p>
+                        <div className="mt-2 pt-1.5 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[#86868B] dark:text-[#636366]">
+                          <span>CBT Protocol</span>
+                          <span className="text-[#007AFF] dark:text-[#0A84FF] font-medium">Instant Undo anytime</span>
+                        </div>
+                        {/* Bottom pointer tick */}
+                        <div className="absolute -bottom-1 left-4 w-2 h-2 rotate-45 bg-white dark:bg-[#1C1C1E] border-r border-b border-black/10 dark:border-white/15" />
+                      </div>
+                    </div>
                   )}
                 </div>
-
-              </div>
 
               {/* Right Send/Stop & Voice Dictation Group */}
               <div className="flex items-center space-x-1.5 sm:space-x-2">

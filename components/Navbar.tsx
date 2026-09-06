@@ -3,6 +3,7 @@
 import React from 'react';
 import { LogOut, Download, HelpCircle } from 'lucide-react';
 import { DuoIcon } from '@/components/DuoIcon';
+import { motion } from 'motion/react';
 import type { User } from 'firebase/auth';
 
 interface NavbarProps {
@@ -48,45 +49,72 @@ export const Navbar: React.FC<NavbarProps> = ({
           </span>
         </div>
 
-        {/* Center Tabs (Apple-style segmented control) */}
+        {/* Center Tabs (Apple-style segmented control with fluid spring motion) */}
         {user && (
-          <nav aria-label="Main Navigation" className="hidden md:flex items-center p-1 bg-[rgba(118,118,128,0.12)] dark:bg-[rgba(0,0,0,0.28)] rounded-xl border border-[rgba(60,60,67,0.10)] dark:border-[rgba(255,255,255,0.08)]">
+          <nav aria-label="Main Navigation" className="hidden md:flex items-center gap-1 p-1 bg-[rgba(118,118,128,0.12)] dark:bg-[rgba(0,0,0,0.28)] rounded-xl border border-[rgba(60,60,67,0.10)] dark:border-[rgba(255,255,255,0.08)] relative select-none">
             <button
               onClick={() => setActiveTab('chat')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+              className={`relative inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer ${
                 activeTab === 'chat'
-                  ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
-                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white border border-transparent'
+                  ? 'text-[#1D1D1F] dark:text-white font-semibold'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white'
               }`}
             >
-              <DuoIcon name="message-2" className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" />
-              <span>Conversation</span>
+              {activeTab === 'chat' && (
+                <motion.div
+                  layoutId="active-desktop-nav-pill"
+                  className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center space-x-2">
+                <DuoIcon name="message-2" className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" />
+                <span>Conversation</span>
+              </span>
             </button>
 
             <button
               onClick={() => setActiveTab('journal')}
               id="tip-reflections"
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+              className={`relative inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer ${
                 activeTab === 'journal'
-                  ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
-                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white border border-transparent'
+                  ? 'text-[#1D1D1F] dark:text-white font-semibold'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white'
               }`}
             >
-              <DuoIcon name="book-2" className="w-3.5 h-3.5 text-current" />
-              <span>Reflections</span>
+              {activeTab === 'journal' && (
+                <motion.div
+                  layoutId="active-desktop-nav-pill"
+                  className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center space-x-2">
+                <DuoIcon name="book-2" className="w-3.5 h-3.5 text-current" />
+                <span>Reflections</span>
+              </span>
             </button>
 
             <button
               onClick={() => setActiveTab('insights')}
               id="tip-insights"
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+              className={`relative inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer ${
                 activeTab === 'insights'
-                  ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
-                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white border border-transparent'
+                  ? 'text-[#1D1D1F] dark:text-white font-semibold'
+                  : 'text-[#6E6E73] hover:text-[#1D1D1F] dark:text-[#8E8E93] dark:hover:text-white'
               }`}
             >
-              <DuoIcon name="compass" className="w-3.5 h-3.5 text-[#34C759] dark:text-[#30D158]" />
-              <span>Longitudinal Insights</span>
+              {activeTab === 'insights' && (
+                <motion.div
+                  layoutId="active-desktop-nav-pill"
+                  className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <span className="relative z-10 flex items-center space-x-2">
+                <DuoIcon name="compass" className="w-3.5 h-3.5 text-[#34C759] dark:text-[#30D158]" />
+                <span>Longitudinal Insights</span>
+              </span>
             </button>
           </nav>
         )}
@@ -171,41 +199,70 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile navigation bar */}
+      {/* Mobile navigation bar with fluid spring motion */}
       {user && (
-        <div className="md:hidden flex items-center justify-around border-t border-[rgba(60,60,67,0.18)] dark:border-[rgba(255,255,255,0.10)] px-4 py-2 bg-[rgba(246,246,246,0.95)] dark:bg-[rgba(30,30,30,0.95)] backdrop-blur-xl">
+        <div className="md:hidden flex items-center justify-around border-t border-[rgba(60,60,67,0.18)] dark:border-[rgba(255,255,255,0.10)] px-4 py-2 bg-[rgba(246,246,246,0.95)] dark:bg-[rgba(30,30,30,0.95)] backdrop-blur-xl relative select-none">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+            className={`relative inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'chat'
-                ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
+                ? 'text-[#1D1D1F] dark:text-white font-semibold'
                 : 'text-[#6E6E73] dark:text-[#8E8E93]'
             }`}
           >
-            <DuoIcon name="message-2" className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" />
-            <span>Chat</span>
+            {activeTab === 'chat' && (
+              <motion.div
+                layoutId="active-mobile-nav-pill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center space-x-1.5">
+              <DuoIcon name="message-2" className="w-3.5 h-3.5 text-[#007AFF] dark:text-[#0A84FF]" />
+              <span>Chat</span>
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab('journal')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+            className={`relative inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'journal'
-                ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
+                ? 'text-[#1D1D1F] dark:text-white font-semibold'
                 : 'text-[#6E6E73] dark:text-[#8E8E93]'
             }`}
           >
-            <DuoIcon name="book-2" className="w-3.5 h-3.5 text-current" />
-            <span>Entries</span>
+            {activeTab === 'journal' && (
+              <motion.div
+                layoutId="active-mobile-nav-pill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center space-x-1.5">
+              <DuoIcon name="book-2" className="w-3.5 h-3.5 text-current" />
+              <span>Entries</span>
+            </span>
           </button>
+
           <button
             onClick={() => setActiveTab('insights')}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+            className={`relative inline-flex items-center justify-center px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
               activeTab === 'insights'
-                ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
+                ? 'text-[#1D1D1F] dark:text-white font-semibold'
                 : 'text-[#6E6E73] dark:text-[#8E8E93]'
             }`}
           >
-            <DuoIcon name="compass" className="w-3.5 h-3.5 text-[#34C759] dark:text-[#30D158]" />
-            <span>Insights</span>
+            {activeTab === 'insights' && (
+              <motion.div
+                layoutId="active-mobile-nav-pill"
+                className="absolute inset-0 rounded-lg bg-white dark:bg-[#38383A] border border-black/[0.06] dark:border-white/[0.12] shadow-xs pointer-events-none"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center space-x-1.5">
+              <DuoIcon name="compass" className="w-3.5 h-3.5 text-[#34C759] dark:text-[#30D158]" />
+              <span>Insights</span>
+            </span>
           </button>
         </div>
       )}

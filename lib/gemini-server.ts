@@ -172,6 +172,65 @@ export const insightResponseSchema: Schema = {
   required: ['period', 'synthesis', 'recurringThemes', 'emotionalTrend', 'recommendations'],
 };
 
+// Prompts Schema Definition for Circadian Prompt Suggestions
+export const promptsResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    prompts: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: 'Exactly 4 deep, evocative, psychologically grounded introspective journaling prompts tailored to the circadian phase.',
+    },
+  },
+  required: ['prompts'],
+};
+
+// Cognitive Reframe Schema Definition (UW/Stanford ACL 2023 & SALT-NLP CBT Framework)
+export const reframeResponseSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    coreThought: {
+      type: Type.STRING,
+      description: 'The distilled negative, catastrophic, or self-critical thought identified in the user text.',
+    },
+    distortion: {
+      type: Type.STRING,
+      description: 'The primary cognitive distortion name (e.g. Catastrophizing, All-or-Nothing Thinking, Mind Reading, Emotional Reasoning, Should Statements, Personalization, Overgeneralization, or None Detected).',
+    },
+    distortionExplanation: {
+      type: Type.STRING,
+      description: 'A compassionate 1 to 2 sentence explanation of why the brain defaults to this distortion under stress.',
+    },
+    validation: {
+      type: Type.STRING,
+      description: 'Empathetic, compassionate acknowledgment that validates the user\'s feelings without endorsing the cognitive distortion (strictly no toxic positivity).',
+    },
+    reframes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          strategy: {
+            type: Type.STRING,
+            description: 'The restructuring strategy (e.g. "Reality Check", "Growth Mindset", "Compassionate Mentor", "Circle of Control", "Impermanence").',
+          },
+          perspective: {
+            type: Type.STRING,
+            description: 'A realistic, grounded alternative perspective written strictly in the user\'s own first-person voice ("I", "my") that directly rewrites their specific situation.',
+          },
+          reflectiveQuestion: {
+            type: Type.STRING,
+            description: 'A thoughtful open-ended question the user can journal on based on this new perspective.',
+          },
+        },
+        required: ['strategy', 'perspective', 'reflectiveQuestion'],
+      },
+      description: 'Exactly 3 distinct, grounded reframing options exploring different psychological angles.',
+    },
+  },
+  required: ['coreThought', 'distortion', 'distortionExplanation', 'validation', 'reframes'],
+};
+
 // Utility to sanitize Firestore payloads and strip all undefined values
 export function stripUndefined<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj, (_, v) => (v === undefined ? null : v)));

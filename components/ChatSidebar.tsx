@@ -86,17 +86,17 @@ const ConversationItem: React.FC<{
       }}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onSelect}
-      className={`relative flex items-center justify-between h-9 px-2.5 rounded-lg text-xs transition-colors cursor-pointer w-full overflow-hidden select-none ${
+      className={`relative flex items-center justify-between h-10 px-3 rounded-lg text-xs transition-colors cursor-pointer w-full overflow-hidden select-none ${
         isActive
           ? 'bg-black/8 dark:bg-white/10 text-[#1D1D1F] dark:text-white font-medium shadow-2xs'
           : 'text-stone-600 dark:text-stone-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-stone-900 dark:hover:text-white'
       }`}
     >
       {/* Title Container - fixed flex-1, never resizes or expands on hover */}
-      <div ref={containerRef} className="flex-1 min-w-0 mr-2 overflow-hidden whitespace-nowrap relative">
+      <div ref={containerRef} className="flex-1 min-w-0 mr-2 overflow-hidden whitespace-nowrap relative flex items-center h-full">
         <span
           ref={textRef}
-          className={`inline-block whitespace-nowrap ${!shouldMarquee ? 'truncate max-w-full' : ''}`}
+          className="inline-block whitespace-nowrap"
           style={
             shouldMarquee
               ? {
