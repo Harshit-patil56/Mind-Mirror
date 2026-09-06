@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LogOut, Download } from 'lucide-react';
+import { LogOut, Download, HelpCircle } from 'lucide-react';
 import { DuoIcon } from '@/components/DuoIcon';
 import type { User } from 'firebase/auth';
 
@@ -14,6 +14,7 @@ interface NavbarProps {
   onOpenSecurity: () => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
+  onOpenTour?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -25,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSecurity,
   darkMode,
   setDarkMode,
+  onOpenTour,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[rgba(60,60,67,0.18)] dark:border-[rgba(255,255,255,0.10)] bg-[rgba(246,246,246,0.85)] dark:bg-[rgba(38,38,38,0.82)] backdrop-blur-xl transition-colors duration-200">
@@ -63,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => setActiveTab('journal')}
+              id="tip-reflections"
               className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
                 activeTab === 'journal'
                   ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
@@ -75,6 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               onClick={() => setActiveTab('insights')}
+              id="tip-insights"
               className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
                 activeTab === 'insights'
                   ? 'bg-white text-[#1D1D1F] border border-[rgba(0,0,0,0.06)] shadow-xs dark:bg-[#38383A] dark:text-white dark:border-[rgba(255,255,255,0.12)]'
@@ -99,6 +103,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             <DuoIcon name="certificate" className="w-3.5 h-3.5 text-current" />
             <span className="hidden sm:inline">Firestore Isolated</span>
           </button>
+
+          {/* Help & Walkthrough Button (Apple HIG Re-discovery) */}
+          {user && onOpenTour && (
+            <button
+              onClick={onOpenTour}
+              title="Help & Interactive Tour"
+              aria-label="Help & Interactive Tour"
+              className="p-2 text-[#6E6E73] hover:text-[#007AFF] hover:bg-black/5 dark:text-[#8E8E93] dark:hover:text-[#0A84FF] dark:bg-transparent dark:hover:bg-[rgba(255,255,255,0.08)] border border-transparent dark:hover:border-[#3A3A3C] rounded-lg transition-colors flex items-center justify-center cursor-pointer"
+            >
+              <HelpCircle className="w-4 h-4 text-inherit" />
+            </button>
+          )}
 
           {/* Privacy & Export Button */}
           {user && (

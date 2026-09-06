@@ -106,6 +106,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const hasCheckedCloudRestore = useRef(false);
 
   const handleScroll = () => {
     if (!scrollContainerRef.current) return;
@@ -170,20 +171,27 @@ export const JournalChat: React.FC<JournalChatProps> = ({
     }
   }, [initialSession?.id]);
 
-  // On first mount, if local draft is empty, check Firestore for latest active session
+  // On first mount ONLY, if local draft is empty and no explicit session was requested, check Firestore for latest active session
   useEffect(() => {
-    if (messages.length === 0 && userId && (!initialSession || initialSession.messages.length === 0)) {
+    if (hasCheckedCloudRestore.current) return;
+    hasCheckedCloudRestore.current = true;
+
+    // Never overwrite if an initial session was explicitly provided or requested (e.g. New Chat)
+    if (initialSession) return;
+
+    if (messages.length === 0 && userId) {
       fetchUserConversations(userId)
         .then((convs) => {
           const activeConv = convs.find((c) => c.status === 'active' && c.messages && c.messages.length > 0);
           if (activeConv) {
             setSessionId(activeConv.id);
+            setSessionTitle(activeConv.title || 'Conversation');
             setMessages(activeConv.messages);
           }
         })
         .catch((err) => console.warn('Could not restore active session from cloud:', err));
     }
-  }, [userId]);
+  }, [userId, initialSession]);
 
   // Check connectivity and model status on mount
   useEffect(() => {
@@ -549,6 +557,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
             {/* Start New Conversation Button */}
             <button
               type="button"
+              id="tip-new-chat"
               onClick={handleStartNewConversation}
               disabled={isSummarizing || isGenerating}
               aria-label="Start a new conversation"
@@ -563,6 +572,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
             {messages.length > 0 && (
               <button
                 type="button"
+                id="tip-save-btn"
                 onClick={handleSaveAndSummarize}
                 disabled={isSummarizing || isGenerating || isSaved}
                 aria-label={isSaved ? 'Conversation saved' : 'Save and summarize journal entry'}
@@ -615,7 +625,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
             </p>
 
             {/* Prompt Starter Chips */}
-            <div className="w-full space-y-2">
+            <div id="tip-starters" className="w-full space-y-2">
               <span className="text-xs font-medium text-[#6E6E73] dark:text-[#8E8E93] block mb-1">
                 Reflective starting points
               </span>
@@ -747,6 +757,7 @@ export const JournalChat: React.FC<JournalChatProps> = ({
           )}
 
           <form
+            id="tip-composer"
             onSubmit={(e) => {
               e.preventDefault();
               handleSendMessage();

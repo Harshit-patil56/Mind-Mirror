@@ -12,6 +12,7 @@ import { EntryDetailModal } from '@/components/EntryDetailModal';
 import { PrivacyModal } from '@/components/PrivacyModal';
 import { SecurityInspectorModal } from '@/components/SecurityInspectorModal';
 import { ChatSidebar } from '@/components/ChatSidebar';
+import { TipKitTour } from '@/components/TipKitTour';
 import { fetchUserJournals, deleteJournalEntry, fetchUserConversations, deleteConversationSession } from '@/lib/journal-service';
 import type { JournalEntry, ConversationSession } from '@/lib/types';
 
@@ -37,6 +38,7 @@ export default function Home() {
   // Modals state
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showTour, setShowTour] = useState(false);
 
   // Appearance state (persisted in local preference, default to Elegant Dark)
   const [darkMode, setDarkMode] = useState(() => {
@@ -56,6 +58,19 @@ export default function Home() {
       localStorage.setItem('pjournal_theme', 'light');
     }
   }, [darkMode]);
+
+  // First-time user onboarding: Launch TipKit tour if not previously completed
+  useEffect(() => {
+    if (user && typeof window !== 'undefined') {
+      const tourCompleted = localStorage.getItem('mindmirror_tipkit_tour_completed');
+      if (!tourCompleted) {
+        const timer = setTimeout(() => {
+          setShowTour(true);
+        }, 700);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user]);
 
   // Reactive Firebase Auth listener with fast fallback and timeout guard
   useEffect(() => {
@@ -243,6 +258,7 @@ export default function Home() {
   };
 
   const handleSessionUpdated = (session: ConversationSession) => {
+    setActiveSession(session);
     setConversations((prev) => {
       const exists = prev.some((c) => c.id === session.id);
       if (exists) {
@@ -293,6 +309,17 @@ export default function Home() {
     );
   }
 
+  const handleTriggerTour = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mindmirror_tipkit_tour_completed');
+    }
+    setShowTour(false);
+    setTimeout(() => {
+      setActiveTab('chat');
+      setShowTour(true);
+    }, 80);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F2F2F7] dark:bg-[#121214] text-[#1D1D1F] dark:text-white transition-colors duration-200">
       
@@ -306,6 +333,7 @@ export default function Home() {
         onOpenSecurity={() => setShowSecurityModal(true)}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        onOpenTour={handleTriggerTour}
       />
 
       {/* Main Workspace */}
@@ -321,7 +349,7 @@ export default function Home() {
                 isOpen={isSidebarOpen}
                 onToggleOpen={handleToggleSidebar}
                 onSelectConversation={handleSelectConversation}
-                onNewConversationClick={() => setActiveSession(null)}
+                onNewConversationClick={handleNewReflection}
                 onDeleteConversation={handleDeleteConversation}
               />
               <div className="flex-1 flex flex-col w-full h-full min-w-0">
@@ -387,6 +415,14 @@ export default function Home() {
           onClose={() => setShowSecurityModal(false)}
         />
       )}
+
+      {/* Apple HIG TipKit Walkthrough Tour */}
+      <TipKitTour
+        isOpen={showTour}
+        onClose={() => setShowTour(false)}
+        onSwitchTab={setActiveTab}
+        activeTab={activeTab}
+      />
 
     </div>
   );

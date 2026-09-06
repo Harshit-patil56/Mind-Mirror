@@ -110,6 +110,7 @@ export const JournalList: React.FC<JournalListProps> = ({
         </div>
 
         <button
+          id="tip-reflections-new"
           onClick={onNewReflection}
           aria-label="Start new journaling session"
           className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm text-white bg-[#007AFF] hover:bg-[#0071E3] dark:text-black dark:bg-[#F5F5F7] dark:hover:bg-white border border-[#007AFF] dark:border-transparent shadow-xs transition-all active:scale-[0.98] cursor-pointer shrink-0"
@@ -120,7 +121,7 @@ export const JournalList: React.FC<JournalListProps> = ({
       </div>
 
       {/* Search & Theme Filter Bar */}
-      <div className="space-y-3">
+      <div id="tip-reflections-search" className="space-y-3">
         <div className="relative flex items-center">
           <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 pointer-events-none" />
           <input

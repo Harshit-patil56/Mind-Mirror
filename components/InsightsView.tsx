@@ -108,6 +108,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
         </div>
 
         <button
+          id="tip-insights-synthesize"
           onClick={handleGenerateInsights}
           disabled={entries.length === 0 || isGenerating}
           className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm text-white bg-[#007AFF] hover:bg-[#0071E3] dark:bg-white dark:hover:bg-stone-100 dark:text-black shadow-xs transition-all disabled:opacity-50 active:scale-[0.98] cursor-pointer shrink-0"
@@ -135,7 +136,7 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
       )}
 
       {/* Metrics strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <div id="tip-insights-metrics" className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.07] dark:border-white/[0.08] shadow-2xs hover:shadow-xs transition-all">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-[#86868B] dark:text-[#8E8E93]">
