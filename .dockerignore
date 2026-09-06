@@ -1,0 +1,41 @@
+# Git & Version Control
+.git
+.gitignore
+
+# Dependencies & Package Managers
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+bun.lock
+
+# Next.js Build Artifacts & Caches
+.next
+out
+.turbo
+
+# Environment Secrets & Local Configurations
+.env
+.env*.local
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE & Editor Configurations
+.vscode
+.idea
+*.swp
+*.swo
+
+# Temporary Files & OS Specifics
+.DS_Store
+Thumbs.db
+*.log
+
+# Documentation & Scratch Files
+*.md
+.agents
+scratch/
+tsconfig.tsbuildinfo

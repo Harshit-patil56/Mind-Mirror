@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global fallback: Deny all by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // All user-scoped documents and collections
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) && isValidId(userId);
+
+      // Journal & conversation summaries collection
+      match /journals/{journalId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) 
+          && isValidId(journalId)
+          && (request.resource.data.userId == null || request.resource.data.userId == userId)
+          && request.resource.data.title is string
+          && request.resource.data.title.size() <= 200
+          && request.resource.data.summary is string
+          && request.resource.data.summary.size() <= 10000;
+      }
+
+      // Active & historical multi-turn conversation sessions
+      match /conversations/{conversationId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) 
+          && isValidId(conversationId)
+          && (request.resource.data.userId == null || request.resource.data.userId == userId);
+      }
+
+      // Original feature: Personal Reflection & Mood/Theme Insights
+      match /insights/{insightId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) 
+          && isValidId(insightId)
+          && (request.resource.data.userId == null || request.resource.data.userId == userId);
+      }
+
+      // Catch-all for any other nested user subcollections
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId) && isValidId(docId);
+      }
+    }
+  }
+}

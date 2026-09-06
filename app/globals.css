@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@import "@duo-icons/tailwind/base";
+@import "@duo-icons/tailwind/icons";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    
+    /* Apple HIG Light Mode Dynamic System Palette (Safari & macOS) */
+    --app-bg: #F2F2F7; /* systemGroupedBackground */
+    --app-surface: #FFFFFF; /* secondarySystemGroupedBackground */
+    --app-surface-elevated: #FFFFFF;
+    --app-surface-secondary: #E5E5EA; /* systemGray5 */
+    --app-border: #D1D1D6; /* systemGray4 / separator */
+    --app-border-subtle: #E5E5EA;
+    --app-text-primary: #1D1D1F; /* label */
+    --app-text-secondary: #6E6E73; /* secondaryLabel */
+    --app-text-tertiary: #86868B; /* tertiaryLabel */
+    --app-nav-bg: rgba(246, 246, 246, 0.85); /* Safari toolbar light vibrancy */
+    --app-nav-border: rgba(60, 60, 67, 0.18);
+    --app-segment-track: rgba(118, 118, 128, 0.12);
+    --app-segment-active: #FFFFFF;
+    --app-segment-active-text: #1D1D1F;
+    --app-selection-bg: rgba(0, 122, 255, 0.2);
+    --app-selection-text: #1D1D1F;
+    --app-scrollbar-track: #F2F2F7;
+    --app-scrollbar-thumb: #C7C7CC;
+    --app-scrollbar-hover: #AEAEB2;
+  }
+
+  .dark {
+    color-scheme: dark;
+    /* Apple HIG & Safari macOS Dark Mode Dynamic System Palette */
+    --app-bg: #121214; /* underPageBackgroundColor / dark systemGroupedBackground */
+    --app-surface: #1C1C1E; /* secondarySystemGroupedBackground / systemGray6 */
+    --app-surface-elevated: #2C2C2E; /* tertiarySystemGroupedBackground / systemGray5 */
+    --app-surface-secondary: #18181A;
+    --app-border: #38383A; /* systemGray4 / macOS dark separator */
+    --app-border-subtle: #2C2C2E; /* systemGray5 */
+    --app-text-primary: #FFFFFF; /* label (Apple white) */
+    --app-text-secondary: #8E8E93; /* secondaryLabel: rgba(235, 235, 245, 0.60) / systemGray */
+    --app-text-tertiary: #636366; /* tertiaryLabel: rgba(235, 235, 245, 0.30) / systemGray2 */
+    --app-nav-bg: rgba(38, 38, 38, 0.82); /* Safari macOS dark toolbar vibrancy */
+    --app-nav-border: rgba(255, 255, 255, 0.10); /* Safari macOS toolbar border */
+    --app-segment-track: rgba(0, 0, 0, 0.28); /* Safari tab bar track */
+    --app-segment-active: #38383A; /* Safari active tab background */
+    --app-segment-active-text: #FFFFFF;
+    --app-selection-bg: rgba(10, 132, 255, 0.30);
+    --app-selection-text: #FFFFFF;
+    --app-scrollbar-track: #121214;
+    --app-scrollbar-thumb: #3A3A3C;
+    --app-scrollbar-hover: #48484A;
+  }
+
+  html, body {
+    background-color: var(--app-bg);
+    color: var(--app-text-primary);
+    font-family: var(--font-apple);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  ::selection {
+    background-color: var(--app-selection-bg);
+    color: var(--app-selection-text);
+  }
+}
+
+/* Global Scrollbar Elimination (macOS / iOS Native Feel) */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Explicit interactive hover cursor definitions */
+@media (pointer: fine) {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a,
+  select,
+  summary,
+  label[for],
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"],
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
+
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  textarea {
+    cursor: text;
+  }
+}
